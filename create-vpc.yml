@@ -1,0 +1,578 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC and Subnet Create
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: 'Project Name'
+        Parameters:
+          - ProjectName
+      - Label:
+          default: 'Network Configuration'
+        Parameters:
+          - VPCCIDR
+          - ContainerPrivateSubnetACIDR
+          - ContainerPrivateSubnetCCIDR
+          - DBPrivateSubnetACIDR
+          - DBPrivateSubnetCCIDR
+          - EgressPrivateSubnetACIDR
+          - EgressPrivateSubnetCCIDR
+          - IngressPublicSubnetACIDR
+          - IngressPublicSubnetCCIDR
+          - ManagementPublicSubnetACIDR
+          - ManagementPublicSubnetCCIDR
+
+    ParameterLabels:
+      VPCCIDR:
+        default: 'VPC CIDR'
+      ContainerPrivateSubnetACIDR:
+        default: 'ContainerPrivateSubnetA CIDR'
+      ContainerPrivateSubnetCCIDR:
+        default: 'ContainerPrivateSubnetC CIDR'
+      DBPrivateSubnetACIDR:
+        default: 'DBPrivateSubnetA CIDR'
+      DBPrivateSubnetCCIDR:
+        default: 'DBPrivateSubnetC CIDR'
+      EgressPrivateSubnetACIDR:
+        default: 'EgressPrivateSubnetA CIDR'
+      EgressPrivateSubnetCCIDR:
+        default: 'EgressPrivateSubnetC CIDR'
+      IngressPublicSubnetACIDR:
+        default: 'IngressPublicSubnetA CIDR'
+      IngressPublicSubnetCCIDR:
+        default: 'IngressPublicSubnetC CIDR'
+      ManagementPublicSubnetACIDR:
+        default: 'ManagementPublicSubnetA CIDR'
+      ManagementPublicSubnetCCIDR:
+        default: 'ManagementPublicSubnetC CIDR'
+
+# ------------------------------------------------------------#
+# Input Parameters
+# ------------------------------------------------------------#
+Parameters:
+  ProjectName:
+    Type: String
+  VPCCIDR:
+    Type: String
+    Default: '10.1.0.0/16'
+  ContainerPrivateSubnetACIDR:
+    Type: String
+    Default: '10.1.1.0/24'
+  ContainerPrivateSubnetCCIDR:
+    Type: String
+    Default: '10.1.2.0/24'
+  DBPrivateSubnetACIDR:
+    Type: String
+    Default: '10.1.11.0/24'
+  DBPrivateSubnetCCIDR:
+    Type: String
+    Default: '10.1.12.0/24'
+  EgressPrivateSubnetACIDR:
+    Type: String
+    Default: '10.1.21.0/24'
+  EgressPrivateSubnetCCIDR:
+    Type: String
+    Default: '10.1.22.0/24'
+  IngressPublicSubnetACIDR:
+    Type: String
+    Default: '10.1.31.0/24'
+  IngressPublicSubnetCCIDR:
+    Type: String
+    Default: '10.1.32.0/24'
+  ManagementPublicSubnetACIDR:
+    Type: String
+    Default: '10.1.41.0/24'
+  ManagementPublicSubnetCCIDR:
+    Type: String
+    Default: '10.1.42.0/24'
+
+Resources:
+  # ------------------------------------------------------------#
+  #  VPC
+  # ------------------------------------------------------------#
+  # VPC Create
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc'
+
+  # ------------------------------------------------------------#
+  #  Internet Gateway
+  # ------------------------------------------------------------#
+  # InternetGateway Create
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw'
+
+  # IGW Attach
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  # ------------------------------------------------------------#
+  #  Subnet
+  # ------------------------------------------------------------#
+  # Container Private Subnet A
+  ContainerPrivateSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref ContainerPrivateSubnetACIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-container-private-subnet-a'
+
+  # Container Private Subnet C
+  ContainerPrivateSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1c'
+      CidrBlock: !Ref ContainerPrivateSubnetCCIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-container-private-subnet-c'
+
+  # DB Private Subnet A
+  DBPrivateSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref DBPrivateSubnetACIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-private-subnet-a'
+
+  # DB Private Subnet C
+  DBPrivateSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1c'
+      CidrBlock: !Ref DBPrivateSubnetCCIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-private-subnet-c'
+
+  # Egress Private Subnet A
+  EgressPrivateSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref EgressPrivateSubnetACIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-egress-private-subnet-a'
+
+  # Egress Private Subnet C
+  EgressPrivateSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1c'
+      CidrBlock: !Ref EgressPrivateSubnetCCIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-egress-private-subnet-c'
+
+  # Ingress Public Subnet A
+  IngressPublicSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref IngressPublicSubnetACIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ingress-public-subnet-a'
+
+  # Ingress Public Subnet C
+  IngressPublicSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1c'
+      CidrBlock: !Ref IngressPublicSubnetCCIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ingress-public-subnet-c'
+
+  # Management Public Subnet A
+  ManagementPublicSubnetA:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1a'
+      CidrBlock: !Ref ManagementPublicSubnetACIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-management-public-subnet-a'
+
+  # Management Public Subnet C
+  ManagementPublicSubnetC:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      AvailabilityZone: 'ap-northeast-1c'
+      CidrBlock: !Ref ManagementPublicSubnetCCIDR
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-management-public-subnet-c'
+
+  # ------------------------------------------------------------#
+  #  RouteTable
+  # ------------------------------------------------------------#
+  # アプリケーション用のルートテーブル
+  ContainerRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-container-route'
+
+  # DB用のルートテーブル
+  DBRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-route'
+
+  # Ingress用のルートテーブル
+  IngressRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-ingress-route'
+
+  # ------------------------------------------------------------#
+  # Routing
+  # ------------------------------------------------------------#
+  RouteIngressDefault:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref IngressRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+    DependsOn:
+      - InternetGatewayAttachment
+
+  # ------------------------------------------------------------#
+  # RouteTable Associate
+  # ------------------------------------------------------------#
+  # PrivateRouteTable Associate ContainerPrivateSubnetA
+  ContainerPrivateSubnetARouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref ContainerPrivateSubnetA
+      RouteTableId: !Ref ContainerRouteTable
+
+  # PrivateRouteTable Associate ContainerPrivateSubnetC
+  ContainerPrivateSubnetCRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref ContainerPrivateSubnetC
+      RouteTableId: !Ref ContainerRouteTable
+
+  # PrivateRouteTable Associate DBPrivateSubnetA
+  DBPrivateSubnetARouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref DBPrivateSubnetA
+      RouteTableId: !Ref DBRouteTable
+
+  # PrivateRouteTable Associate DBPrivateSubnetC
+  DBPrivateSubnetCRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref DBPrivateSubnetC
+      RouteTableId: !Ref DBRouteTable
+
+  # PrivateRouteTable Associate IngressPublicSubnetA
+  IngressPublicSubnetARouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref IngressPublicSubnetA
+      RouteTableId: !Ref IngressRouteTable
+
+  # PrivateRouteTable Associate IngressPublicSubnetC
+  IngressPublicSubnetCRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref IngressPublicSubnetC
+      RouteTableId: !Ref IngressRouteTable
+
+  # PrivateRouteTable Associate ManagementPublicSubnetA ※IngressRouteTableを利用する
+  ManagementPublicSubnetARouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref ManagementPublicSubnetA
+      RouteTableId: !Ref IngressRouteTable
+
+  # PrivateRouteTable Associate ManagementPublicSubnetC ※IngressRouteTableを利用する
+  ManagementPublicSubnetCRouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref ManagementPublicSubnetC
+      RouteTableId: !Ref IngressRouteTable
+
+  # ------------------------------------------------------------#
+  # Security Group
+  # ------------------------------------------------------------#
+  # インターネット公開のセキュリティグループ
+  IngressSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security group for ingress
+      GroupName: ingress
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+        - CidrIpv6: ::/0
+          Description: from ::/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-ingress'
+
+  # 管理用サーバ向けのセキュリティグループ
+  ManagementSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security Group of management server
+      GroupName: management
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-management'
+
+  # バックエンドコンテナアプリ用セキュリティグループ
+  BackendContainerSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security Group of backend container app
+      GroupName: container
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-backend-container'
+
+  # フロントエンドコンテナアプリ用セキュリティグループ
+  FrontContainerSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security Group of front container app
+      GroupName: front-container
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-frontend-container'
+
+  # 内部用ロードバランサ用のセキュリティグループ
+  InternalLBSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security group for internal load balancer
+      GroupName: internal
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-internal-lb'
+
+  # DB用セキュリティグループ
+  DBSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security Group of database
+      GroupName: database
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-db'
+
+  # VPCエンドポイント用セキュリティグループ
+  EgressSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Security Group of VPC Endpoint
+      GroupName: egress
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-sg-egress'
+
+  # ------------------------------------------------------------#
+  # Security Group Ingress
+  # ------------------------------------------------------------#
+  # Internet LB -> Front Container
+  FromIngressSgToFrontContainerSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTP for Ingress
+      FromPort: 80
+      GroupId: !GetAtt FrontContainerSg.GroupId
+      SourceSecurityGroupId: !GetAtt IngressSg.GroupId
+      ToPort: 80
+
+  # Front Container -> Internal LB
+  FromFrontContainerSgToInternalLBSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTP for front container
+      FromPort: 80
+      GroupId: !GetAtt InternalLBSg.GroupId
+      SourceSecurityGroupId: !GetAtt FrontContainerSg.GroupId
+      ToPort: 80
+
+  # Internal LB -> Back Container
+  FromInternalLBSgToBackendContainerSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTP for internal lb
+      FromPort: 80
+      GroupId: !GetAtt BackendContainerSg.GroupId
+      SourceSecurityGroupId: !GetAtt InternalLBSg.GroupId
+      ToPort: 80
+
+  ## Back container -> DB
+  FromBackendContainerSgToDBSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: MySQL protocol from backend App
+      FromPort: 3306
+      GroupId: !GetAtt DBSg.GroupId
+      SourceSecurityGroupId: !GetAtt BackendContainerSg.GroupId
+      ToPort: 3306
+
+  ## Front container -> DB
+  FromFrontContainerSgToDBSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: MySQL protocol from frontend App
+      FromPort: 3306
+      GroupId: !GetAtt DBSg.GroupId
+      SourceSecurityGroupId: !GetAtt FrontContainerSg.GroupId
+      ToPort: 3306
+
+  ## Management server -> DB
+  FromManagementSgToDBSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: MySQL protocol from management server
+      FromPort: 3306
+      GroupId: !GetAtt DBSg.GroupId
+      SourceSecurityGroupId: !GetAtt ManagementSg.GroupId
+      ToPort: 3306
+
+  ## Management server -> Internal LB
+  FromManagementSgToInternalLBSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTP for management server
+      FromPort: 80
+      GroupId: !GetAtt InternalLBSg.GroupId
+      SourceSecurityGroupId: !GetAtt ManagementSg.GroupId
+      ToPort: 80
+
+  ### Back container -> VPC endpoint
+  FromBackendContainerSgToEgressSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTPS for Container App
+      FromPort: 443
+      GroupId: !GetAtt EgressSg.GroupId
+      SourceSecurityGroupId: !GetAtt BackendContainerSg.GroupId
+      ToPort: 443
+
+  ### Front container -> VPC endpoint
+  FromFrontContainerSgToEgressSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTPS for Front Container App
+      FromPort: 443
+      GroupId: !GetAtt EgressSg.GroupId
+      SourceSecurityGroupId: !GetAtt FrontContainerSg.GroupId
+      ToPort: 443
+
+  ### Management Server -> VPC endpoint
+  FromManagementSgToEgressSg:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTPS for management server
+      FromPort: 443
+      GroupId: !GetAtt EgressSg.GroupId
+      SourceSecurityGroupId: !GetAtt ManagementSg.GroupId
+      ToPort: 443
+
+# ------------------------------------------------------------#
+# Output Parameters
+# ------------------------------------------------------------#
+Outputs:
+  # VPC
+  VPC:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${ProjectName}-vpc'

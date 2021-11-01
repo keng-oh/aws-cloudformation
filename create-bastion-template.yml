@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC and EC2 Creation in Single AZ
+
+# Variables
+Parameters:
+  Environment:
+    Type: String
+    Default: Dev
+    Description: Dev or Stg or Pro
+  ProjectName:
+    Type: String
+    Default: Practice
+    Description: Project Name
+  VPCCidr:
+    Type: String
+    Default: 10.1.0.0/16
+    Description: VPC IP Range
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.1.1.0/24
+    Description: Public Subnet IP Range
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.1.2.0/24
+    Description: Private Subnet IP Range
+  AZ:
+    Type: String
+    Default: ap-northeast
+    Description: Tokyo
+  Zone:
+    Type: String
+    Default: 1a
+    Description: 1a or 1c or 1d
+  MyIP:
+    Description: IP address range which is allowed to access public subnet EC2 from it
+    Type: String
+    Default: 0.0.0.0/0
+  KeyName:
+    Description: EC2 Key Pair to allow SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+
+Resources:
+  # --------------------------------------
+  # VPC Creation
+  # --------------------------------------
+
+  # VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCidr
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Join ['-', [!Ref Environment, !Ref ProjectName, vpc]]
+
+  # Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join ['-', [!Ref Environment, !Ref ProjectName, igw]]
+  # Attach Internet Gateway to VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Route Table for Public Subnet
+  PublicRouteTableIGW:
+    Type: AWS::EC2::RouteTable
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ['-', [!Ref Environment, !Ref ProjectName, public-rt]]
+  # Route to Internet (Internet Gateway)
+  PublicRouteIGW:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTableIGW
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Route Table for Private Subnet
+  PrivateRouteTableNatGW:
+    Type: AWS::EC2::RouteTable
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join ['-', [!Ref Environment, !Ref ProjectName, private-rt]]
+  # Route to Internet (Nat Gateway)
+  PrivateRouteNatGW:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTableNatGW
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  # Public Subnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Join ['-', [!Ref AZ, !Ref Zone]]
+      CidrBlock: !Ref PublicSubnetCidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, public-subnet, !Ref Zone],
+            ]
+
+  # Associate Route Table for Public Subnet to Public Subnet
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTableIGW
+
+  # Private Subnet
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Join ['-', [!Ref AZ, !Ref Zone]]
+      CidrBlock: !Ref PrivateSubnetCidr
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, private-subnet, !Ref Zone],
+            ]
+
+  # Associate Route Table for Private Subnet to Private Subnet
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTableNatGW
+
+  # Elastic IP to attach to Nat Gateway
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: VPC
+
+  # Nat Gateway Creation
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, subnet, ngw, !Ref Zone],
+            ]
+
+  # --------------------------------------
+  # EC2 Creation
+  # --------------------------------------
+
+  # EC2 in Public Subnet
+  PublicSubnetEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      # Amazon Linux 2
+      ImageId: ami-00d101850e971728d
+      KeyName: !Ref KeyName
+      InstanceType: t2.micro
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          SubnetId: !Ref PublicSubnet
+          GroupSet:
+            - !Ref PublicSubnetEC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, public, ec2, !Ref Zone],
+            ]
+  # Security Group for EC2 in Public Subnet
+  PublicSubnetEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: public-ec2-sg
+      GroupDescription: Allow SSH and HTTP access from MyIP
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        # Inbound SSH
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIP
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, public, ec2, sg, !Ref Zone],
+            ]
+
+  # EC2 in Private Subnet
+  PrivateSubnetEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      # Amazon Linux 2
+      ImageId: ami-00d101850e971728d
+      KeyName: !Ref KeyName
+      InstanceType: t2.micro
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: 'false'
+          DeviceIndex: '0'
+          SubnetId: !Ref PrivateSubnet
+          GroupSet:
+            - !Ref PrivateSubnetEC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, private, ec2, !Ref Zone],
+            ]
+  # Security Group for EC2 in Private Subnet
+  PrivateSubnetEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: private-ec2-sg
+      GroupDescription: Allow SSH and HTTP access from PublicSubnetCidr
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        # Inbound SSH
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref PublicSubnetCidr
+        # Inbound HTTP
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref PublicSubnetCidr
+        # Inbound HTTPS
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref PublicSubnetCidr
+      Tags:
+        - Key: Name
+          Value:
+            !Join [
+              '-',
+              [!Ref Environment, !Ref ProjectName, private, ec2, sg, !Ref Zone],
+            ]

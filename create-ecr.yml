@@ -1,0 +1,32 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create ECR
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: 'Project Name'
+        Parameters:
+          - ProjectName
+
+# ------------------------------------------------------------#
+# Input Parameters
+# ------------------------------------------------------------#
+Parameters:
+  ProjectName:
+    Type: String
+
+Resources:
+  ECR:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${ProjectName}-ecr-repository
+
+# ------------------------------------------------------------#
+# Output Parameters
+# ------------------------------------------------------------#
+Outputs:
+  ECR:
+    Value: !Ref ECR
+    Export:
+      Name: !Sub '${ProjectName}-ecr-repository'

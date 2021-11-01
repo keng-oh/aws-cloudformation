@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Bastion EC2 Create
+
+# ------------------------------------------------------------#
+# Input Parameters
+# ------------------------------------------------------------#
+Parameters:
+  ProjectName:
+    Type: String
+  VPC:
+    Type: AWS::EC2::VPC
+  Zone:
+    Type: String
+    Default: a
+    Description: a or c
+  MyIP:
+    Type: String
+    Default: 0.0.0.0/0
+  KeyName:
+    Description: EC2 Key Pair to allow SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+
+Resources:
+  # Elastic IP to attach to Nat Gateway
+  NatGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: VPC
+
+  # Nat Gateway Creation
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIP.AllocationId
+      SubnetId:
+        - Fn::ImportValue: !Sub '${ProjectName}-public-subnet-${Zone}'
+
+  # --------------------------------------
+  # EC2 Creation
+  # --------------------------------------
+  PublicSubnetEC2:
+    Type: AWS::EC2::Instance
+    Properties:
+      # Amazon Linux 2
+      ImageId: ami-00d101850e971728d
+      KeyName: !Ref KeyName
+      InstanceType: t2.micro
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: 'true'
+          DeviceIndex: '0'
+          SubnetId:
+            - Fn::ImportValue: !Sub '${ProjectName}-public-subnet-${Zone}'
+          GroupSet:
+            - !Ref PublicSubnetEC2SecurityGroup
+  # Security Group for EC2 in Public Subnet
+  PublicSubnetEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: bastion-ec2-sg
+      GroupDescription: Allow SSH and HTTP access from MyIP
+      VpcId:
+        - Fn::ImportValue: !Sub '${ProjectName}-vpc'
+      SecurityGroupIngress:
+        # Inbound SSH
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIP
